@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquivo Confidencial - Caso Camarate</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; background-color: #e5ddc9; }
+        #map { width: 100vw; height: 100vh; }
+        .leaflet-tile-pane { filter: sepia(40%) contrast(110%) brightness(95%); }
+
+        .title-box {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: #f1e4c3; border: 2px solid #8b0000;
+            padding: 12px 25px; text-align: center; font-family: "Courier New", Courier, monospace;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.4); border-radius: 3px;
+            user-select: none; cursor: pointer;
+        }
+        .title-box h1 { margin: 0; font-size: 20px; color: #8b0000; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; }
+        .title-box p { margin: 5px 0 0 0; font-size: 13px; color: #222; font-weight: bold; }
+
+        /* ÍCONES DO MAPA */
+        .custom-icon { background-color: #111; color: #fff; border-radius: 50%; border: 2px solid #fff; text-align: center; line-height: 24px; font-weight: bold; font-family: "Courier New", Courier, monospace; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-size: 14px; }
+        .riot-icon { background-color: #8b0000; border: 1px solid #111; border-radius: 50%; box-shadow: 1px 1px 4px rgba(0,0,0,0.6); }
+        
+        /* ÍCONE DA CASA-FORTE (Quartel-General) */
+        .qg-icon {
+            background-color: #2b3a27;
+            color: #fff;
+            border-radius: 4px;
+            border: 2px solid #fff;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            font-size: 18px;
+        }
+
+        /* ÍCONE DE PONTOS TURÍSTICOS (Bolinha discreta) */
+        .tourist-icon { background-color: #555; border: 2px solid #fff; border-radius: 50%; box-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+
+        .gps-container { background: transparent; border: none; }
+        .gps-marker { width: 16px; height: 16px; background-color: #0055ff; border-radius: 50%; border: 2px solid #fff; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 85, 255, 0.7); } 70% { transform: scale(1.5); box-shadow: 0 0 0 15px rgba(0, 85, 255, 0); } 100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 85, 255, 0); } }
+    </style>
+</head>
+<body>
+
+    <div class="title-box" id="header-box">
+        <h1>Arquivo Confidencial</h1>
+        <p>Caso Camarate (Nov. / Dez. 1980)</p>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        var map = L.map('map').setView([41.148, -8.615], 14);
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 18, attribution: 'Tiles &copy; Esri'
+        }).addTo(map);
+
+        function createIcon(letter) { return L.divIcon({ className: 'custom-icon', html: letter, iconSize: [28, 28], iconAnchor: [14, 14] }); }
+        var riotIcon = L.divIcon({ className: 'riot-icon', iconSize: [12, 12], iconAnchor: [6, 6] });
+        var touristIcon = L.divIcon({ className: 'tourist-icon', iconSize: [12, 12], iconAnchor: [6, 6] });
+        var gpsIcon = L.divIcon({ className: 'gps-container', html: '<div class="gps-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+
+        // RAIO DE PROXIMIDADE PARA DESBLOQUEAR CADA LETRA (em metros)
+        var RAIO_DESBLOQUEIO = 120;
+
+        // COMEÇA COM TODAS OCULTAS (chave limpa v3 para ignorar testes antigos)
+        var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados_v3') || '{}');
+
+        // DEFINIÇÃO SEQUENCIAL DOS PONTOS PRINCIPAIS (Todos A a F começam ocultos)
+        var pontosMissao = [
+            { id: 'A', lat: 41.2372, lng: -8.6700, popup: '<b>A - Ponto de Infiltração</b><br>Aeroporto Francisco Sá Carneiro.', visivel: false, marker: null },
+            { id: 'B', lat: 41.1488, lng: -8.6062, popup: '<b>B - O Esconderijo no Povo</b><br>Mercado do Bolhão. Sinal visual e contacto.', visivel: false, marker: null },
+            { id: 'C', lat: 41.1498, lng: -8.6046, popup: '<b>C - Onde as Almas Repousam</b><br>Capela de Santa Catarina (Capela das Almas).', visivel: false, marker: null },
+            { id: 'D', lat: 41.1480, lng: -8.6255, popup: '<b>D - O Miradouro sobre o Rio</b><br>Jardins do Palácio de Cristal (Vista do Douro).', visivel: false, marker: null },
+            { id: 'E', lat: 41.1472, lng: -8.6335, popup: '<b>E - A Carruagem sobre Carris</b><br>Paragem Entre-Quintas (Linha 18 rumo ao Passeio Alegre).', visivel: false, marker: null },
+            { id: 'F', lat: 41.1475, lng: -8.6757, popup: '<b>F - O Arquivo Final</b><br>Farolim da Barra do Douro. Onde o rio entrega os seus segredos.', visivel: false, marker: null }
+        ];
+
+        // Círculo da Zona de Interceção (Capela das Almas - só aparece quando C for desbloqueado)
+        var circuloCapela = L.circle([41.1498, -8.6046], { color: '#8b0000', fillColor: '#8b0000', fillOpacity: 0.15, radius: 80, dashArray: '5, 5', weight: 3 })
+            .bindPopup('<b>Zona de Interceção (Ponto C)</b><br>Capela das Almas. Entrega do Mapa de Contas e escuta intercetada.');
+
+        function revelarPonto(ponto, notificar, centralizar) {
+            if (ponto.visivel) return;
+            ponto.visivel = true;
+            desbloqueados[ponto.id] = true;
+            localStorage.setItem('camarate_desbloqueados_v3', JSON.stringify(desbloqueados));
+
+            ponto.marker = L.marker([ponto.lat, ponto.lng], {icon: createIcon(ponto.id)}).addTo(map).bindPopup(ponto.popup);
+            
+            if (ponto.id === 'C') {
+                circuloCapela.addTo(map);
+            }
+
+            if (centralizar) {
+                map.setView([ponto.lat, ponto.lng], 16);
+            }
+
+            if (notificar) {
+                ponto.marker.openPopup();
+            }
+        }
+
+        function esconderTodosPontos() {
+            desbloqueados = {};
+            localStorage.removeItem('camarate_desbloqueados_v3');
+
+            pontosMissao.forEach(function(p) {
+                if (p.visivel) {
+                    if (p.marker) {
+                        map.removeLayer(p.marker);
+                        p.marker = null;
+                    }
+                    p.visivel = false;
+                }
+            });
+
+            if (map.hasLayer(circuloCapela)) {
+                map.removeLayer(circuloCapela);
+            }
+            map.setView([41.148, -8.615], 14);
+        }
+
+        // Restaura apenas pontos já alcançados na sessão atual
+        pontosMissao.forEach(function(p) {
+            if (desbloqueados[p.id]) {
+                revelarPonto(p, false, false);
+            }
+        });
+
+        // MODO DE CONTINGÊNCIA PROGRESSIVO:
+        // 5 cliques rápidos no título revelam APENAS o próximo ponto ainda oculto (A -> B -> C -> D -> E -> F).
+        // Quando todos já estiverem visíveis, mais 5 cliques escondem todos novamente para reiniciar.
+        var cliquesTitulo = 0;
+        var timerCliques = null;
+        document.getElementById('header-box').addEventListener('click', function() {
+            cliquesTitulo++;
+            clearTimeout(timerCliques);
+            timerCliques = setTimeout(function() { cliquesTitulo = 0; }, 1500);
+            
+            if (cliquesTitulo >= 5) {
+                cliquesTitulo = 0;
+                var proximoOculto = pontosMissao.find(function(p) { return !p.visivel; });
+                
+                if (proximoOculto) {
+                    revelarPonto(proximoOculto, true, true);
+                    alert("CONTINGÊNCIA ATIVADA: Coordenada (" + proximoOculto.id + ") desbloqueada no mapa.");
+                } else {
+                    esconderTodosPontos();
+                    alert("MODO DE MISSÃO REINICIADO: Todas as coordenadas (A a F) foram ocultadas novamente.");
+                }
+            }
+        });
+	
+        // ÍCONE DA CASA-FORTE (Quartel-General)
+        var qgIcon = L.divIcon({ 
+            className: 'qg-icon', 
+            html: '⌂',
+            iconSize: [28, 28], 
+            iconAnchor: [14, 14] 
+        });
+
+        L.marker([41.1573, -8.6258], {icon: qgIcon}).addTo(map)
+         .bindPopup('<b>Casa-Forte (Refúgio Seguro)</b><br>Estação Carolina Michaelis. Ponto de ocultação de bagagem e análise do dossiê.');
+
+        // SISTEMA DE TRIANGULAÇÃO POR CLIQUE (Confrontos na Baixa)
+        var p1 = [41.1465, -8.6111]; // Praça da Liberdade
+        var p2 = [41.1511, -8.6013]; // Rua D. João IV
+        var p3 = [41.1463, -8.6046]; // Coliseu do Porto
+        var p4 = [41.1513, -8.6078]; // Trindade
+
+        var ativo1 = false, ativo2 = false, ativo3 = false, ativo4 = false;
+        var linha1Pronta = false, linha2Pronta = false;
+
+        function verificarLinhas() {
+            if (ativo1 && ativo2 && !linha1Pronta) { L.polyline([p1, p2], { color: '#0055ff', weight: 4 }).addTo(map); linha1Pronta = true; }
+            if (ativo3 && ativo4 && !linha2Pronta) { L.polyline([p3, p4], { color: '#0055ff', weight: 4 }).addTo(map); linha2Pronta = true; }
+            if (linha1Pronta && linha2Pronta) {
+                map.setView([41.1488, -8.6062], 16);
+                setTimeout(function() { alert("SINAL INTERCETADO: As rotas da Baixa cruzaram-se! O informante aguarda no Mercado do Bolhão."); }, 600);
+            }
+        }
+
+        var m1 = L.marker(p1, {icon: riotIcon}).addTo(map).bindPopup('<i>Praça da Liberdade.<br><b>(Coordenada Registada)</b></i>'); m1.on('click', function() { ativo1 = true; verificarLinhas(); });
+        var m2 = L.marker(p2, {icon: riotIcon}).addTo(map).bindPopup('<i>Rua D. João IV.<br><b>(Coordenada Registada)</b></i>'); m2.on('click', function() { ativo2 = true; verificarLinhas(); });
+        var m3 = L.marker(p3, {icon: riotIcon}).addTo(map).bindPopup('<i>Coliseu do Porto.<br><b>(Coordenada Registada)</b></i>'); m3.on('click', function() { ativo3 = true; verificarLinhas(); });
+        var m4 = L.marker(p4, {icon: riotIcon}).addTo(map).bindPopup('<i>Trindade.<br><b>(Coordenada Registada)</b></i>'); m4.on('click', function() { ativo4 = true; verificarLinhas(); });
+
+        // PONTOS DE ROTEIRO TURÍSTICO PESSOAL (Bolinhas cinzas)
+        var locaisTuristicos = [
+            { lat: 41.1488, lng: -8.6133, nome: "Restaurante Espécie (Almoço & Dossiê)" },
+            { lat: 41.1493, lng: -8.6054, nome: "Casa Vegetariana" },
+            { lat: 41.1469, lng: -8.6148, nome: "Livraria Lello" },
+            { lat: 41.1472, lng: -8.6155, nome: "O Jardineiro (Jantar 19h30)" },
+            { lat: 41.1643, lng: -8.5925, nome: "Mahikari" },
+            { lat: 41.1458, lng: -8.6065, nome: "Igreja de Santo Ildefonso" },
+            { lat: 41.1456, lng: -8.6106, nome: "Estação de São Bento" },
+            { lat: 41.1439, lng: -8.6131, nome: "Rua das Flores" },
+            { lat: 41.1428, lng: -8.6111, nome: "Sé do Porto" },
+            { lat: 41.1415, lng: -8.6085, nome: "Muralhas Fernandinas" },
+            { lat: 41.1402, lng: -8.6120, nome: "Cais da Ribeira" },
+            { lat: 41.1414, lng: -8.6157, nome: "Palácio da Bolsa" },
+            { lat: 41.1408, lng: -8.6160, nome: "Igreja de São Francisco" },
+            { lat: 41.1400, lng: -8.6095, nome: "Ponte D. Luís I" },
+            { lat: 41.1415, lng: -8.6140, nome: "Miradouro do Infante" },
+            { lat: 41.1378, lng: -8.6085, nome: "Miradouro da Serra do Pilar" },
+            { lat: 41.1780, lng: -8.6920, nome: "Praia de Matosinhos" },
+            { lat: 41.1555, lng: -8.6812, nome: "Pérgola da Foz" },
+            { lat: 41.1535, lng: -8.6290, nome: "Mercado Bom Sucesso" }
+        ];
+
+        locaisTuristicos.forEach(function(local) {
+            L.marker([local.lat, local.lng], {icon: touristIcon}).addTo(map).bindPopup('<span style="color:#555; font-weight:bold;">📍 ' + local.nome + '</span>');
+        });
+
+        // GPS E VERIFICAÇÃO DE PROXIMIDADE
+        var gpsMarker = null;
+        map.locate({setView: false, watch: true, enableHighAccuracy: true});
+        map.on('locationfound', function(e) {
+            if (gpsMarker == null) {
+                gpsMarker = L.marker(e.latlng, {icon: gpsIcon}).addTo(map);
+                gpsMarker.bindPopup("<b>Inspetora</b><br>Ligação GPS Ativa.");
+            } else {
+                gpsMarker.setLatLng(e.latlng);
+                if (gpsMarker.isPopupOpen()) gpsMarker.getPopup().setLatLng(e.latlng);
+            }
+
+            // Verifica distância da localização atual até cada ponto oculto
+            pontosMissao.forEach(function(p) {
+                if (!p.visivel) {
+                    var distancia = e.latlng.distanceTo(L.latLng(p.lat, p.lng));
+                    if (distancia <= RAIO_DESBLOQUEIO) {
+                        revelarPonto(p, true, false);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
