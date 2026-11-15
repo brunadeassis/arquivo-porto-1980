@@ -73,11 +73,12 @@
         // RAIO DE PROXIMIDADE PARA DESBLOQUEAR CADA LETRA (em metros)
         var RAIO_DESBLOQUEIO = 120;
 
-        // COMEÇA COM TODAS OCULTAS (chave limpa v3 para ignorar testes antigos)
-        var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados_v3') || '{}');
+        // COMEÇA COM TODAS OCULTAS
+        var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados_v4') || '{}');
 
-        // DEFINIÇÃO SEQUENCIAL DOS PONTOS PRINCIPAIS (Todos A a F começam ocultos)
+        // DEFINIÇÃO SEQUENCIAL DOS PONTOS PRINCIPAIS (Inclui T = Teste CentraleSupélec)
         var pontosMissao = [
+            { id: 'T', lat: 48.7093, lng: 2.1636, popup: '<b>T - Ponto de Teste (CentraleSupélec)</b><br>Sinal GPS confirmado com sucesso!', visivel: false, marker: null },
             { id: 'A', lat: 41.2372, lng: -8.6700, popup: '<b>A - Ponto de Infiltração</b><br>Aeroporto Francisco Sá Carneiro.', visivel: false, marker: null },
             { id: 'B', lat: 41.1488, lng: -8.6062, popup: '<b>B - O Esconderijo no Povo</b><br>Mercado do Bolhão. Sinal visual e contacto.', visivel: false, marker: null },
             { id: 'C', lat: 41.1498, lng: -8.6046, popup: '<b>C - Onde as Almas Repousam</b><br>Capela de Santa Catarina (Capela das Almas).', visivel: false, marker: null },
@@ -94,7 +95,7 @@
             if (ponto.visivel) return;
             ponto.visivel = true;
             desbloqueados[ponto.id] = true;
-            localStorage.setItem('camarate_desbloqueados_v3', JSON.stringify(desbloqueados));
+            localStorage.setItem('camarate_desbloqueados_v4', JSON.stringify(desbloqueados));
 
             ponto.marker = L.marker([ponto.lat, ponto.lng], {icon: createIcon(ponto.id)}).addTo(map).bindPopup(ponto.popup);
             
@@ -113,7 +114,7 @@
 
         function esconderTodosPontos() {
             desbloqueados = {};
-            localStorage.removeItem('camarate_desbloqueados_v3');
+            localStorage.removeItem('camarate_desbloqueados_v4');
 
             pontosMissao.forEach(function(p) {
                 if (p.visivel) {
@@ -131,16 +132,14 @@
             map.setView([41.148, -8.615], 14);
         }
 
-        // Restaura apenas pontos já alcançados na sessão atual
+        // Restaura apenas pontos já alcançados
         pontosMissao.forEach(function(p) {
             if (desbloqueados[p.id]) {
                 revelarPonto(p, false, false);
             }
         });
 
-        // MODO DE CONTINGÊNCIA PROGRESSIVO:
-        // 5 cliques rápidos no título revelam APENAS o próximo ponto ainda oculto (A -> B -> C -> D -> E -> F).
-        // Quando todos já estiverem visíveis, mais 5 cliques escondem todos novamente para reiniciar.
+        // MODO DE CONTINGÊNCIA PROGRESSIVO (5 cliques no título)
         var cliquesTitulo = 0;
         var timerCliques = null;
         document.getElementById('header-box').addEventListener('click', function() {
@@ -157,7 +156,7 @@
                     alert("CONTINGÊNCIA ATIVADA: Coordenada (" + proximoOculto.id + ") desbloqueada no mapa.");
                 } else {
                     esconderTodosPontos();
-                    alert("MODO DE MISSÃO REINICIADO: Todas as coordenadas (A a F) foram ocultadas novamente.");
+                    alert("MODO DE MISSÃO REINICIADO: Todas as coordenadas foram ocultadas novamente.");
                 }
             }
         });
