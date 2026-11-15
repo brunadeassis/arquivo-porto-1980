@@ -17,10 +17,22 @@
             z-index: 1000; background: #f1e4c3; border: 2px solid #8b0000;
             padding: 12px 25px; text-align: center; font-family: "Courier New", Courier, monospace;
             box-shadow: 4px 4px 10px rgba(0,0,0,0.4); border-radius: 3px;
-            user-select: none; cursor: pointer;
+            user-select: none; cursor: pointer; width: max-content; max-width: 85vw;
         }
-        .title-box h1 { margin: 0; font-size: 20px; color: #8b0000; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; }
-        .title-box p { margin: 5px 0 0 0; font-size: 13px; color: #222; font-weight: bold; }
+        .title-box h1 { margin: 0; font-size: 18px; color: #8b0000; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; }
+        .title-box p { margin: 5px 0 0 0; font-size: 12px; color: #222; font-weight: bold; }
+
+        /* BOTÃO DE ATIVAÇÃO / ESTADO DO GPS */
+        .gps-btn {
+            position: absolute; bottom: 25px; right: 15px; z-index: 1000;
+            background: #f1e4c3; border: 2px solid #8b0000; color: #8b0000;
+            padding: 10px 14px; font-family: "Courier New", Courier, monospace;
+            font-weight: bold; font-size: 12px; border-radius: 4px;
+            box-shadow: 3px 3px 8px rgba(0,0,0,0.4); cursor: pointer;
+        }
+        .gps-btn.ativo {
+            background: #2b3a27; border-color: #fff; color: #fff;
+        }
 
         /* ÍCONES DO MAPA */
         .custom-icon { background-color: #111; color: #fff; border-radius: 50%; border: 2px solid #fff; text-align: center; line-height: 24px; font-weight: bold; font-family: "Courier New", Courier, monospace; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-size: 14px; }
@@ -28,18 +40,12 @@
         
         /* ÍCONE DA CASA-FORTE (Quartel-General) */
         .qg-icon {
-            background-color: #2b3a27;
-            color: #fff;
-            border-radius: 4px;
-            border: 2px solid #fff;
-            text-align: center;
-            line-height: 24px;
-            font-weight: bold;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-            font-size: 18px;
+            background-color: #2b3a27; color: #fff; border-radius: 4px; border: 2px solid #fff;
+            text-align: center; line-height: 24px; font-weight: bold;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-size: 18px;
         }
 
-        /* ÍCONE DE PONTOS TURÍSTICOS (Bolinha discreta) */
+        /* ÍCONE DE PONTOS TURÍSTICOS */
         .tourist-icon { background-color: #555; border: 2px solid #fff; border-radius: 50%; box-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
 
         .gps-container { background: transparent; border: none; }
@@ -53,6 +59,8 @@
         <h1>Arquivo Confidencial</h1>
         <p>Caso Camarate (Nov. / Dez. 1980)</p>
     </div>
+
+    <button class="gps-btn" id="btn-gps">📡 ATIVAR RADAR GPS</button>
 
     <div id="map"></div>
 
@@ -70,13 +78,9 @@
         var touristIcon = L.divIcon({ className: 'tourist-icon', iconSize: [12, 12], iconAnchor: [6, 6] });
         var gpsIcon = L.divIcon({ className: 'gps-container', html: '<div class="gps-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
 
-        // RAIO DE PROXIMIDADE PARA DESBLOQUEAR CADA LETRA (em metros)
         var RAIO_DESBLOQUEIO = 120;
-
-        // COMEÇA COM TODAS OCULTAS
         var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados_v4') || '{}');
 
-        // DEFINIÇÃO SEQUENCIAL DOS PONTOS PRINCIPAIS (Inclui T = Teste CentraleSupélec)
         var pontosMissao = [
             { id: 'T', lat: 48.7093, lng: 2.1636, popup: '<b>T - Ponto de Teste (CentraleSupélec)</b><br>Sinal GPS confirmado com sucesso!', visivel: false, marker: null },
             { id: 'A', lat: 41.2372, lng: -8.6700, popup: '<b>A - Ponto de Infiltração</b><br>Aeroporto Francisco Sá Carneiro.', visivel: false, marker: null },
@@ -87,7 +91,6 @@
             { id: 'F', lat: 41.1475, lng: -8.6757, popup: '<b>F - O Arquivo Final</b><br>Farolim da Barra do Douro. Onde o rio entrega os seus segredos.', visivel: false, marker: null }
         ];
 
-        // Círculo da Zona de Interceção (Capela das Almas - só aparece quando C for desbloqueado)
         var circuloCapela = L.circle([41.1498, -8.6046], { color: '#8b0000', fillColor: '#8b0000', fillOpacity: 0.15, radius: 80, dashArray: '5, 5', weight: 3 })
             .bindPopup('<b>Zona de Interceção (Ponto C)</b><br>Capela das Almas. Entrega do Mapa de Contas e escuta intercetada.');
 
@@ -98,59 +101,38 @@
             localStorage.setItem('camarate_desbloqueados_v4', JSON.stringify(desbloqueados));
 
             ponto.marker = L.marker([ponto.lat, ponto.lng], {icon: createIcon(ponto.id)}).addTo(map).bindPopup(ponto.popup);
-            
-            if (ponto.id === 'C') {
-                circuloCapela.addTo(map);
-            }
-
-            if (centralizar) {
-                map.setView([ponto.lat, ponto.lng], 16);
-            }
-
-            if (notificar) {
-                ponto.marker.openPopup();
-            }
+            if (ponto.id === 'C') circuloCapela.addTo(map);
+            if (centralizar) map.setView([ponto.lat, ponto.lng], 16);
+            if (notificar) ponto.marker.openPopup();
         }
 
         function esconderTodosPontos() {
             desbloqueados = {};
             localStorage.removeItem('camarate_desbloqueados_v4');
-
             pontosMissao.forEach(function(p) {
                 if (p.visivel) {
-                    if (p.marker) {
-                        map.removeLayer(p.marker);
-                        p.marker = null;
-                    }
+                    if (p.marker) { map.removeLayer(p.marker); p.marker = null; }
                     p.visivel = false;
                 }
             });
-
-            if (map.hasLayer(circuloCapela)) {
-                map.removeLayer(circuloCapela);
-            }
+            if (map.hasLayer(circuloCapela)) map.removeLayer(circuloCapela);
             map.setView([41.148, -8.615], 14);
         }
 
-        // Restaura apenas pontos já alcançados
         pontosMissao.forEach(function(p) {
-            if (desbloqueados[p.id]) {
-                revelarPonto(p, false, false);
-            }
+            if (desbloqueados[p.id]) revelarPonto(p, false, false);
         });
 
-        // MODO DE CONTINGÊNCIA PROGRESSIVO (5 cliques no título)
+        // CONTINGÊNCIA PROGRESSIVA (5 cliques no título)
         var cliquesTitulo = 0;
         var timerCliques = null;
         document.getElementById('header-box').addEventListener('click', function() {
             cliquesTitulo++;
             clearTimeout(timerCliques);
             timerCliques = setTimeout(function() { cliquesTitulo = 0; }, 1500);
-            
             if (cliquesTitulo >= 5) {
                 cliquesTitulo = 0;
                 var proximoOculto = pontosMissao.find(function(p) { return !p.visivel; });
-                
                 if (proximoOculto) {
                     revelarPonto(proximoOculto, true, true);
                     alert("CONTINGÊNCIA ATIVADA: Coordenada (" + proximoOculto.id + ") desbloqueada no mapa.");
@@ -160,24 +142,14 @@
                 }
             }
         });
-	
-        // ÍCONE DA CASA-FORTE (Quartel-General)
-        var qgIcon = L.divIcon({ 
-            className: 'qg-icon', 
-            html: '⌂',
-            iconSize: [28, 28], 
-            iconAnchor: [14, 14] 
-        });
 
+        // CASA-FORTE
+        var qgIcon = L.divIcon({ className: 'qg-icon', html: '⌂', iconSize: [28, 28], iconAnchor: [14, 14] });
         L.marker([41.1573, -8.6258], {icon: qgIcon}).addTo(map)
          .bindPopup('<b>Casa-Forte (Refúgio Seguro)</b><br>Estação Carolina Michaelis. Ponto de ocultação de bagagem e análise do dossiê.');
 
-        // SISTEMA DE TRIANGULAÇÃO POR CLIQUE (Confrontos na Baixa)
-        var p1 = [41.1465, -8.6111]; // Praça da Liberdade
-        var p2 = [41.1511, -8.6013]; // Rua D. João IV
-        var p3 = [41.1463, -8.6046]; // Coliseu do Porto
-        var p4 = [41.1513, -8.6078]; // Trindade
-
+        // TRIANGULAÇÃO
+        var p1 = [41.1465, -8.6111], p2 = [41.1511, -8.6013], p3 = [41.1463, -8.6046], p4 = [41.1513, -8.6078];
         var ativo1 = false, ativo2 = false, ativo3 = false, ativo4 = false;
         var linha1Pronta = false, linha2Pronta = false;
 
@@ -190,12 +162,12 @@
             }
         }
 
-        var m1 = L.marker(p1, {icon: riotIcon}).addTo(map).bindPopup('<i>Praça da Liberdade.<br><b>(Coordenada Registada)</b></i>'); m1.on('click', function() { ativo1 = true; verificarLinhas(); });
-        var m2 = L.marker(p2, {icon: riotIcon}).addTo(map).bindPopup('<i>Rua D. João IV.<br><b>(Coordenada Registada)</b></i>'); m2.on('click', function() { ativo2 = true; verificarLinhas(); });
-        var m3 = L.marker(p3, {icon: riotIcon}).addTo(map).bindPopup('<i>Coliseu do Porto.<br><b>(Coordenada Registada)</b></i>'); m3.on('click', function() { ativo3 = true; verificarLinhas(); });
-        var m4 = L.marker(p4, {icon: riotIcon}).addTo(map).bindPopup('<i>Trindade.<br><b>(Coordenada Registada)</b></i>'); m4.on('click', function() { ativo4 = true; verificarLinhas(); });
+        L.marker(p1, {icon: riotIcon}).addTo(map).bindPopup('<i>Praça da Liberdade.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo1 = true; verificarLinhas(); });
+        L.marker(p2, {icon: riotIcon}).addTo(map).bindPopup('<i>Rua D. João IV.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo2 = true; verificarLinhas(); });
+        L.marker(p3, {icon: riotIcon}).addTo(map).bindPopup('<i>Coliseu do Porto.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo3 = true; verificarLinhas(); });
+        L.marker(p4, {icon: riotIcon}).addTo(map).bindPopup('<i>Trindade.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo4 = true; verificarLinhas(); });
 
-        // PONTOS DE ROTEIRO TURÍSTICO PESSOAL (Bolinhas cinzas)
+        // PONTOS TURÍSTICOS
         var locaisTuristicos = [
             { lat: 41.1488, lng: -8.6133, nome: "Restaurante Espécie (Almoço & Dossiê)" },
             { lat: 41.1493, lng: -8.6054, nome: "Casa Vegetariana" },
@@ -222,10 +194,27 @@
             L.marker([local.lat, local.lng], {icon: touristIcon}).addTo(map).bindPopup('<span style="color:#555; font-weight:bold;">📍 ' + local.nome + '</span>');
         });
 
-        // GPS E VERIFICAÇÃO DE PROXIMIDADE
+        // SISTEMA DE GPS COM TRATAMENTO DE ERROS E BOTÃO DE TOQUE (Compatível com iOS Safari/Chrome)
         var gpsMarker = null;
-        map.locate({setView: false, watch: true, enableHighAccuracy: true});
+        var btnGps = document.getElementById('btn-gps');
+        var primeiroFix = true;
+
+        function iniciarRadarGPS(centralizarAoEncontrar) {
+            btnGps.textContent = "📡 A PROCURAR SINAL...";
+            map.locate({
+                setView: centralizarAoEncontrar,
+                maxZoom: 16,
+                watch: true,
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            });
+        }
+
         map.on('locationfound', function(e) {
+            btnGps.textContent = "🟢 GPS ATIVO";
+            btnGps.classList.add('ativo');
+
             if (gpsMarker == null) {
                 gpsMarker = L.marker(e.latlng, {icon: gpsIcon}).addTo(map);
                 gpsMarker.bindPopup("<b>Inspetora</b><br>Ligação GPS Ativa.");
@@ -234,7 +223,11 @@
                 if (gpsMarker.isPopupOpen()) gpsMarker.getPopup().setLatLng(e.latlng);
             }
 
-            // Verifica distância da localização atual até cada ponto oculto
+            if (primeiroFix) {
+                primeiroFix = false;
+                map.setView(e.latlng, 16);
+            }
+
             pontosMissao.forEach(function(p) {
                 if (!p.visivel) {
                     var distancia = e.latlng.distanceTo(L.latLng(p.lat, p.lng));
@@ -243,6 +236,19 @@
                     }
                 }
             });
+        });
+
+        map.on('locationerror', function(e) {
+            btnGps.textContent = "⚠️ ATIVAR GPS";
+            btnGps.classList.remove('ativo');
+            alert("Aviso de GPS (" + e.code + "): " + e.message + "\n\nVerifica se a Localização está ativa nas Definições do telemóvel para o Safari/Chrome e toca em 'ATIVAR RADAR GPS'.");
+        });
+
+        // Tenta iniciar automaticamente e também permite disparo manual por toque (exigido pelo iOS)
+        iniciarRadarGPS(false);
+        btnGps.addEventListener('click', function() {
+            primeiroFix = true;
+            iniciarRadarGPS(true);
         });
     </script>
 </body>
