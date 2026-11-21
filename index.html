@@ -78,44 +78,38 @@
         var touristIcon = L.divIcon({ className: 'tourist-icon', iconSize: [12, 12], iconAnchor: [6, 6] });
         var gpsIcon = L.divIcon({ className: 'gps-container', html: '<div class="gps-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
 
-        var RAIO_DESBLOQUEIO = 120;
-        var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados_v4') || '{}');
+        var RAIO_DESBLOQUEIO = 80;
+        var desbloqueados = JSON.parse(localStorage.getItem('camarate_desbloqueados') || '{}');
 
         var pontosMissao = [
-            { id: 'T', lat: 48.7093, lng: 2.1636, popup: '<b>T - Ponto de Teste (CentraleSupélec)</b><br>Sinal GPS confirmado com sucesso!', visivel: false, marker: null },
-            { id: 'A', lat: 41.2372, lng: -8.6700, popup: '<b>A - Ponto de Infiltração</b><br>Aeroporto Francisco Sá Carneiro.', visivel: false, marker: null },
-            { id: 'B', lat: 41.1488, lng: -8.6062, popup: '<b>B - O Esconderijo no Povo</b><br>Mercado do Bolhão. Sinal visual e contacto.', visivel: false, marker: null },
-            { id: 'C', lat: 41.1498, lng: -8.6046, popup: '<b>C - Onde as Almas Repousam</b><br>Capela de Santa Catarina (Capela das Almas).', visivel: false, marker: null },
-            { id: 'D', lat: 41.1480, lng: -8.6255, popup: '<b>D - O Miradouro sobre o Rio</b><br>Jardins do Palácio de Cristal (Vista do Douro).', visivel: false, marker: null },
-            { id: 'E', lat: 41.1472, lng: -8.6335, popup: '<b>E - A Carruagem sobre Carris</b><br>Paragem Entre-Quintas (Linha 18 rumo ao Passeio Alegre).', visivel: false, marker: null },
-            { id: 'F', lat: 41.1475, lng: -8.6757, popup: '<b>F - O Arquivo Final</b><br>Farolim da Barra do Douro. Onde o rio entrega os seus segredos.', visivel: false, marker: null }
+            { id: 'A', lat: 41.250175, lng: -8.681755, popup: '<b>A - Ponto de Infiltração</b><br>Aeroporto Francisco Sá Carneiro.', visivel: false, marker: null },
+            { id: 'B', lat: 41.150053, lng: -8.606848, popup: '<b>B - O Esconderijo no Povo</b><br>Mercado do Bolhão.', visivel: false, marker: null },
+            { id: 'C', lat: 41.149986, lng: -8.605621, popup: '<b>C - Onde as Almas Repousam</b><br>Capela de Santa Catarina (Capela das Almas).<br><br><b>🎙️ Escuta Intercetada:</b><br><audio controls preload="metadata" style="width: 220px; height: 36px; margin-top: 6px;"><source src="audio_eanes.mp3" type="audio/mpeg">O teu navegador não suporta áudio.</audio>', visivel: false, marker: null },
+            { id: 'D', lat: 41.148589, lng: -8.625470, popup: '<b>D - O Miradouro sobre o Rio</b><br>Jardins do Palácio de Cristal (Vista do Douro).', visivel: false, marker: null },
+            { id: 'E', lat: 41.145567, lng: -8.628658, popup: '<b>E - A Carruagem sobre Carris</b><br>Paragem Entre-Quintas (Linha 18 rumo ao Passeio Alegre).', visivel: false, marker: null },
+            { id: 'F', lat: 41.147005, lng: -8.676114, popup: '<b>F - O Arquivo Final</b><br>Farolim da Barra do Douro. Onde o rio entrega os seus segredos.', visivel: false, marker: null }
         ];
-
-        var circuloCapela = L.circle([41.1498, -8.6046], { color: '#8b0000', fillColor: '#8b0000', fillOpacity: 0.15, radius: 80, dashArray: '5, 5', weight: 3 })
-            .bindPopup('<b>Zona de Interceção (Ponto C)</b><br>Capela das Almas. Entrega do Mapa de Contas e escuta intercetada.');
 
         function revelarPonto(ponto, notificar, centralizar) {
             if (ponto.visivel) return;
             ponto.visivel = true;
             desbloqueados[ponto.id] = true;
-            localStorage.setItem('camarate_desbloqueados_v4', JSON.stringify(desbloqueados));
+            localStorage.setItem('camarate_desbloqueados', JSON.stringify(desbloqueados));
 
             ponto.marker = L.marker([ponto.lat, ponto.lng], {icon: createIcon(ponto.id)}).addTo(map).bindPopup(ponto.popup);
-            if (ponto.id === 'C') circuloCapela.addTo(map);
             if (centralizar) map.setView([ponto.lat, ponto.lng], 16);
             if (notificar) ponto.marker.openPopup();
         }
 
         function esconderTodosPontos() {
             desbloqueados = {};
-            localStorage.removeItem('camarate_desbloqueados_v4');
+            localStorage.removeItem('camarate_desbloqueados');
             pontosMissao.forEach(function(p) {
                 if (p.visivel) {
                     if (p.marker) { map.removeLayer(p.marker); p.marker = null; }
                     p.visivel = false;
                 }
             });
-            if (map.hasLayer(circuloCapela)) map.removeLayer(circuloCapela);
             map.setView([41.148, -8.615], 14);
         }
 
@@ -145,27 +139,100 @@
 
         // CASA-FORTE
         var qgIcon = L.divIcon({ className: 'qg-icon', html: '⌂', iconSize: [28, 28], iconAnchor: [14, 14] });
-        L.marker([41.1573, -8.6258], {icon: qgIcon}).addTo(map)
-         .bindPopup('<b>Casa-Forte (Refúgio Seguro)</b><br>Estação Carolina Michaelis. Ponto de ocultação de bagagem e análise do dossiê.');
+        L.marker([41.157854, -8.621646], {icon: qgIcon}).addTo(map)
+         .bindPopup('<b>Casa-Forte</b><br>Estação Carolina Michaelis. Ponto de ocultação de bagagem e análise do dossiê.');
 
-        // TRIANGULAÇÃO
-        var p1 = [41.1465, -8.6111], p2 = [41.1511, -8.6013], p3 = [41.1463, -8.6046], p4 = [41.1513, -8.6078];
-        var ativo1 = false, ativo2 = false, ativo3 = false, ativo4 = false;
-        var linha1Pronta = false, linha2Pronta = false;
+// TRIANGULAÇÃO SEQUENCIAL (COM DETEÇÃO DE ERRO)
+        var p1 = [41.1465, -8.6111]; // Praça da Liberdade (Canto Inf. Esq.)
+        var p2 = [41.1511, -8.6013]; // Rua D. João IV (Canto Sup. Dir.)
+        var p3 = [41.1463, -8.6046]; // Coliseu do Porto (Canto Inf. Dir.)
+        var p4 = [41.1513, -8.6078]; // Trindade (Canto Sup. Esq.)
 
-        function verificarLinhas() {
-            if (ativo1 && ativo2 && !linha1Pronta) { L.polyline([p1, p2], { color: '#0055ff', weight: 4 }).addTo(map); linha1Pronta = true; }
-            if (ativo3 && ativo4 && !linha2Pronta) { L.polyline([p3, p4], { color: '#0055ff', weight: 4 }).addTo(map); linha2Pronta = true; }
-            if (linha1Pronta && linha2Pronta) {
-                map.setView([41.1488, -8.6062], 16);
-                setTimeout(function() { alert("SINAL INTERCETADO: As rotas da Baixa cruzaram-se! O informante aguarda no Mercado do Bolhão."); }, 600);
+        var pontosTriangulacao = [
+            { id: 1, coords: p1, nome: 'Praça da Liberdade', marker: null },
+            { id: 2, coords: p2, nome: 'Rua D. João IV', marker: null },
+            { id: 3, coords: p3, nome: 'Coliseu do Porto', marker: null },
+            { id: 4, coords: p4, nome: 'Trindade', marker: null }
+        ];
+
+        var sequenciaCliques = [];
+        var linhasDesenhadas = [];
+
+        function resetarTriangulacao() {
+            sequenciaCliques = [];
+            linhasDesenhadas.forEach(function(linha) { map.removeLayer(linha); });
+            linhasDesenhadas = [];
+            pontosTriangulacao.forEach(function(pt) {
+                if (pt.marker && pt.marker.getElement()) {
+                    pt.marker.getElement().style.border = '1px solid #111';
+                    pt.marker.getElement().style.transform = pt.marker.getElement().style.transform.replace(' scale(1.4)', '');
+                }
+            });
+        }
+
+        function ehParValido(a, b) {
+            return (a === 1 && b === 2) || (a === 2 && b === 1) ||
+                   (a === 3 && b === 4) || (a === 4 && b === 3);
+        }
+
+        function registarCliqueTriangulacao(ptObj) {
+            // Ignora se clicar duas vezes seguidas no mesmo ponto ou em ponto já usado
+            if (sequenciaCliques.indexOf(ptObj.id) !== -1) return;
+
+            sequenciaCliques.push(ptObj.id);
+            if (ptObj.marker && ptObj.marker.getElement()) {
+                ptObj.marker.getElement().style.border = '2px solid #ffcc00';
+            }
+
+            // Verifica o 1º par (cliques 1 e 2)
+            if (sequenciaCliques.length === 2) {
+                var a = sequenciaCliques[0], b = sequenciaCliques[1];
+                var cA = pontosTriangulacao[a - 1].coords;
+                var cB = pontosTriangulacao[b - 1].coords;
+
+                if (ehParValido(a, b)) {
+                    var linha1 = L.polyline([cA, cB], { color: '#0055ff', weight: 4 }).addTo(map);
+                    linhasDesenhadas.push(linha1);
+                } else {
+                    var linhaErro = L.polyline([cA, cB], { color: '#8b0000', weight: 3, dashArray: '6, 6' }).addTo(map);
+                    linhasDesenhadas.push(linhaErro);
+                    setTimeout(function() {
+                        alert("ERRO DE TRIANGULAÇÃO: Esta rota não interceta o alvo. As coordenadas foram reiniciadas.");
+                        resetarTriangulacao();
+                    }, 350);
+                }
+            }
+
+            // Verifica o 2º par (cliques 3 e 4)
+            if (sequenciaCliques.length === 4) {
+                var c = sequenciaCliques[2], d = sequenciaCliques[3];
+                var cC = pontosTriangulacao[c - 1].coords;
+                var cD = pontosTriangulacao[d - 1].coords;
+
+                if (ehParValido(c, d)) {
+                    var linha2 = L.polyline([cC, cD], { color: '#0055ff', weight: 4 }).addTo(map);
+                    linhasDesenhadas.push(linha2);
+                    map.setView([41.150053, -8.606848], 16);
+                    setTimeout(function() {
+                        alert("SINAL INTERCETADO: As rotas da Baixa cruzaram-se! O informante aguarda no Mercado do Bolhão.");
+                    }, 500);
+                } else {
+                    var linhaErro2 = L.polyline([cC, cD], { color: '#8b0000', weight: 3, dashArray: '6, 6' }).addTo(map);
+                    linhasDesenhadas.push(linhaErro2);
+                    setTimeout(function() {
+                        alert("ERRO DE TRIANGULAÇÃO: O segundo vetor falhou o cruzamento. A reiniciar...");
+                        resetarTriangulacao();
+                    }, 350);
+                }
             }
         }
 
-        L.marker(p1, {icon: riotIcon}).addTo(map).bindPopup('<i>Praça da Liberdade.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo1 = true; verificarLinhas(); });
-        L.marker(p2, {icon: riotIcon}).addTo(map).bindPopup('<i>Rua D. João IV.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo2 = true; verificarLinhas(); });
-        L.marker(p3, {icon: riotIcon}).addTo(map).bindPopup('<i>Coliseu do Porto.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo3 = true; verificarLinhas(); });
-        L.marker(p4, {icon: riotIcon}).addTo(map).bindPopup('<i>Trindade.<br><b>(Coordenada Registada)</b></i>').on('click', function() { ativo4 = true; verificarLinhas(); });
+        pontosTriangulacao.forEach(function(pt) {
+            pt.marker = L.marker(pt.coords, {icon: riotIcon})
+                .addTo(map)
+                .bindPopup('<i>' + pt.nome + '.<br><b>(Coordenada Registada)</b></i>')
+                .on('click', function() { registarCliqueTriangulacao(pt); });
+        });
 
         // PONTOS TURÍSTICOS
         var locaisTuristicos = [
